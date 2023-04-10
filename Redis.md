@@ -82,3 +82,86 @@ Redis支持以下数据类型：
   3. 工作方式不同：Redis节点在运行时接受客户端发送的请求，并返回相应结果；而哨兵进程则是定时向Redis节点发送命令来监控其状态。当节点出现故障时，哨兵进程会向其他哨兵发送消息，进行选举操作，选举出新的主节点。这样的工作方式确保了哨兵进程具有较低的性能开销和资源占用。
 
   总之，哨兵进程和Redis节点是两个不同的概念，哨兵进程的作用是监控和控制Redis节点的状态，确保Redis集群的高可用性和稳定性。
+  
+  ## 安装redis及哨兵模式部署
+https://redis.io/docs/getting-started/installation/install-redis-on-linux/
+1. 问题
+  https://stackoverflow.com/questions/50668845/cannot-install-redis-server-on-ubuntu-18-04
+```JAVA
+# 修改配置文件 vi /etc/redis/redis.conf 不启用ipv6
+- bind 127.0.0.1 ::1
++ bind 127.0.0.1
+# 注意端口6379 没有被占用
+```
+
+2. 哨兵模式配置
+https://www.cnblogs.com/kismetv/p/9609938.html
+```shell
+# 三个redis配置文件redis.conf
+
+port 6380
+daemonize yes
+logfile "6380.log"
+dbfilename "dump-6380.rdb"
+-- 
+port 6381
+daemonize yes
+logfile "6381.log"
+dbfilename "dump-6381.rdb"
+slaveof 127.0.0.1 6380
+--
+port 6382
+daemonize yes
+logfile "6382.log"
+dbfilename "dump-6382.rdb"
+slaveof 127.0.0.1 6380
+
+# 启动三个redis
+redis-server redis-6380.conf
+redis-server redis-6381.conf
+redis-server redis-6382.conf
+
+# 停止redis
+redis-cli -h 127.0.0.1 -p 6380 shutdown
+
+
+# 连接redis
+redis-cli -h 127.0.0.1 -p 6380
+# 查看状态
+info
+
+####### ---------------- 3个哨兵----------------------
+#sentinel-26380.conf
+port 26380
+daemonize yes
+logfile "26380.log"
+sentinel monitor mymaster 127.0.0.1 6380 2
+
+
+#sentinel-26381.conf
+port 26381
+daemonize yes
+logfile "26381.log"
+sentinel monitor mymaster 127.0.0.1 6380 2
+
+
+#sentinel-26382.conf
+port 26382
+daemonize yes
+logfile "26382.log"
+sentinel monitor mymaster 127.0.0.1 6380 2
+
+
+启动三个sentinel 哨兵
+redis-server sentinel-26380.conf --sentinel
+redis-server sentinel-26381.conf --sentinel
+redis-server sentinel-26382.conf --sentinel
+
+# 连接redis 哨兵
+redis-cli -h 127.0.0.1 -p 26380
+
+# 查看状态
+info sentinel
+```
+
+
